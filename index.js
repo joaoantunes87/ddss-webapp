@@ -3,6 +3,14 @@ const port = parseInt(process.env.PORT, 10) || 3000
 
 const { Client } = require('pg')
 
+const DB_CONNECTION = {
+    user: 'ddss',        
+    database: 'ddss',
+    password: 'ddss',
+    host: process.env.DB_HOST || 'localhost',
+    port: 5432
+}
+
 const session = require('express-session')
 const app = express()
 
@@ -52,16 +60,9 @@ app.get('/me', (req, res) => {
 })
 
 app.post('/sessions', async (req, res) => {
+    const client = new Client(DB_CONNECTION)
     const { email, password } = req.body;
     
-    const client = new Client({
-        user: 'ddss',
-        host: 'localhost',
-        database: 'ddss',
-        password: 'ddss',
-        port: 5432,
-    })
-
     try {      
         client.connect()
         
@@ -98,16 +99,9 @@ app.post('/sessions', async (req, res) => {
 )
 
 app.post('/users', (req, res) => {
+    const client = new Client(DB_CONNECTION)
     const { name, email, password } = req.body;
     
-    const client = new Client({
-        user: 'ddss',
-        host: 'localhost',
-        database: 'ddss',
-        password: 'ddss',
-        port: 5432,
-    })
-  
     client.connect()
     
     const insertQuery = `insert into ddss_user values('${email}', '${password}', '${name}')`;
@@ -115,6 +109,7 @@ app.post('/users', (req, res) => {
     client.query(insertQuery, (dbErr, dbRes) => {
         if (dbErr) {
             // TODO
+            console.log('Error: ', dbErr)
             res.redirect('/signup');
         } else {
             res.redirect('/');
@@ -136,15 +131,8 @@ app.get('/payments', (req, res) => res.send(`<html>
 </html>`))
 
 app.get('/search_payments', async (req, res) => {
+    const client = new Client(DB_CONNECTION)
     const { date } = req.query;
-    
-    const client = new Client({
-        user: 'ddss',
-        host: 'localhost',
-        database: 'ddss',
-        password: 'ddss',
-        port: 5432,
-    })
 
     try {      
         client.connect()
@@ -194,16 +182,10 @@ app.get('/search_payments', async (req, res) => {
 })
 
 app.post('/logout', (req, res) => {
+    const client = new Client(DB_CONNECTION)
+
     req.session.destroy();
     
-    const client = new Client({
-        user: 'ddss',
-        host: 'localhost',
-        database: 'ddss',
-        password: 'ddss',
-        port: 5432,
-    })
-  
     client.connect()
     
     const destroySessionQuery = `DELETE from user_session where session_id='${req.sessionID}'`;
