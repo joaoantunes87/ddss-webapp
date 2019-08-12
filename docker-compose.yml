@@ -1,0 +1,14 @@
+version: "3"
+services:
+  database:
+    container_name: ddss-database
+    image: ddss-database
+    ports:
+      - "5432:5432"
+  web:
+    container_name: ddss-webapp
+    environment:
+      DB_HOST: database
+    image: ddss-webapp
+    ports:
+      - "3000:3000"
