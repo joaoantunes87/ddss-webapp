@@ -15,6 +15,8 @@ const session = require('express-session')
 const app = express()
 
 app.use(session({
+    /* FIXME creating a vulnerability on purpose. Now I am able to acess cookies in the browser */
+    cookie: { httpOnly: false },
     secret: 'ddss',
     resave: false,
     saveUninitialized: true
@@ -22,30 +24,40 @@ app.use(session({
 
 app.use(express.urlencoded());
 
-app.get('/', (req, res) => res.send(`<html>
-    <main>
-        <form method="POST" action="/sessions">
-            <input name="email" type="email"/>
-            <input name="password" type="password"/>
-            <button type="submit">Login</button>
-        </form>
-        <a href="/signup">Create Account</a>
-    </main>
-</html>`))
+app.get('/', (req, res) => {
+    console.log('Session ID: ', req.sessionID);
 
-app.get('/signup', (req, res) => res.send(`<html>
-    <main>
-        <form method="POST" action="/users">
-            <input name="name" type="text"/>
-            <input name="email" type="email"/>
-            <input name="password" type="password"/>
-            <button type="submit">Sign Up</button>
-        </form>
-        <a href="/">Login</a>
-    </main>
-</html>`))
+    return res.send(`<html>
+        <main>
+            <form method="POST" action="/sessions">
+                <input name="email" type="email"/>
+                <input name="password" type="password"/>
+                <button type="submit">Login</button>
+            </form>
+            <a href="/signup">Create Account</a>
+        </main>
+    </html>`);
+})
 
-app.get('/me', (req, res) => {    
+app.get('/signup', (req, res) => {
+    console.log('Session ID: ', req.sessionID);
+
+    return res.send(`<html>
+        <main>
+            <form method="POST" action="/users">
+                <input name="name" type="text"/>
+                <input name="email" type="email"/>
+                <input name="password" type="password"/>
+                <button type="submit">Sign Up</button>
+            </form>
+            <a href="/">Login</a>
+        </main>
+    </html>`);
+})
+
+app.get('/me', (req, res) => {   
+    console.log('Session ID: ', req.sessionID); 
+
     res.send(`<html>
         <main>
             <aside id="sidebar">
@@ -60,6 +72,8 @@ app.get('/me', (req, res) => {
 })
 
 app.post('/sessions', async (req, res) => {
+    console.log('Session ID: ', req.sessionID);
+
     const client = new Client(DB_CONNECTION)
     const { email, password } = req.body;
     
@@ -68,13 +82,17 @@ app.post('/sessions', async (req, res) => {
         
         // TODO create transaction
 
-        const destroySessionQuery = `DELETE from user_session where user_email='${email}'`;
-        await client.query(destroySessionQuery);
+        // TODO protection to destroy previous session. Leave it open as a vulnerability
 
-        const selectQuery = `select * from ddss_user where email='${email}' AND password = '${password}'`;
+        // const destroySessionQuery = `DELETE from user_session where user_email='${email}'`;
+        // await client.query(destroySessionQuery);
 
+        // console.log('Destroy session query: ', destroySessionQuery);
+
+        const selectQuery = `select * from ddss_user where email='${email}' AND password = '${password}'`;        
+        console.log('Login query: ', selectQuery);
         const dbRes = await client.query(selectQuery);
-        const isAuthValid = !!(dbRes && dbRes.rowCount === 1);
+        const isAuthValid = !!(dbRes && dbRes.rowCount > 0);
 
         if (isAuthValid) {
             const destroySessionQuery = `DELETE from user_session where session_id='${req.sessionID}'`;
@@ -99,13 +117,15 @@ app.post('/sessions', async (req, res) => {
 )
 
 app.post('/users', (req, res) => {
+    console.log('Session ID: ', req.sessionID);
+
     const client = new Client(DB_CONNECTION)
     const { name, email, password } = req.body;
     
     client.connect()
     
     const insertQuery = `insert into ddss_user values('${email}', '${password}', '${name}')`;
-
+    console.log('Insert User: ', insertQuery);
     client.query(insertQuery, (dbErr, dbRes) => {
         if (dbErr) {
             // TODO
@@ -120,17 +140,23 @@ app.post('/users', (req, res) => {
   }
 )
 
-app.get('/payments', (req, res) => res.send(`<html>
-    <main>
-        <form method="GET" action="/search_payments">
-            <input name="date" type="text"/>
-            <button type="submit">Search</button>
-        </form>
-        <a href="/me">Home</a>
-    </main>
-</html>`))
+app.get('/payments', (req, res) => { 
+    console.log('Session ID: ', req.sessionID);
+
+    return res.send(`<html>
+        <main>
+            <form method="GET" action="/search_payments">
+                <input name="date" type="text"/>
+                <button type="submit">Search</button>
+            </form>
+            <a href="/me">Home</a>
+        </main>
+    </html>`)}
+);
 
 app.get('/search_payments', async (req, res) => {
+    console.log('Session ID: ', req.sessionID);
+
     const client = new Client(DB_CONNECTION)
     const { date } = req.query;
 
@@ -144,7 +170,7 @@ app.get('/search_payments', async (req, res) => {
         const authUserEmail = sessionRows.rows[0]['user_email'];
 
         const selectQuery = `select * from payment where user_email = '${authUserEmail}' AND validity = '${date}'`;
-    
+        console.log('Search payments: ', selectQuery);
         const paymentRecords = await client.query(selectQuery);
             
         let tableRowsHtml = '';
@@ -156,7 +182,7 @@ app.get('/search_payments', async (req, res) => {
             </tr>`;
         });
         
-        res.send(`<html>
+        const htmlResponse = `<html>
             <main>
                 <h3>Your Payments at ${date}</h3>
                 <table>
@@ -172,7 +198,12 @@ app.get('/search_payments', async (req, res) => {
                     </tbody>
                 </table>
             </main>
-        </html>`)
+        </html>`
+        
+        // TODO to remove, letting an open vulnerability for reflected XSS
+        res.set('X-XSS-Protection', 0);
+
+        res.send(htmlResponse)
 
     } catch(error) {
         res.redirect('/');
@@ -182,6 +213,7 @@ app.get('/search_payments', async (req, res) => {
 })
 
 app.post('/logout', (req, res) => {
+    console.log('Session ID: ', req.sessionID);
     const client = new Client(DB_CONNECTION)
 
     req.session.destroy();
@@ -192,7 +224,7 @@ app.post('/logout', (req, res) => {
 
     client.query(destroySessionQuery, (dbErr, dbRes) => {
         if (dbErr) {
-            // TODO handle erro
+            // TODO handle error
         }
 
         res.redirect('/');
