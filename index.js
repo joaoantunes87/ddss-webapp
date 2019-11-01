@@ -55,20 +55,45 @@ app.get('/signup', (req, res) => {
     </html>`);
 })
 
-app.get('/me', (req, res) => {   
-    console.log('Session ID: ', req.sessionID); 
+app.get('/me', async (req, res) => {   
+    console.log('Session ID: ', req.sessionID)
+    const client = new Client(DB_CONNECTION)
 
-    res.send(`<html>
-        <main>
-            <aside id="sidebar">
-                <a href="/payments">Payments</a>
-            </aside>
-            <p>Welcome Home</p>
-            <form method="POST" action="/logout">
-                <button type="submit">Logout</button>
-            </form>
-        </main>
-    </html>`)
+    try {      
+        client.connect()
+        
+        const currentSessionQuery = `select * from user_session where session_id = '${req.sessionID}'`;
+
+        const sessionRows = await client.query(currentSessionQuery);
+
+        // Check authentication
+        const isAuthValid = !!(sessionRows && sessionRows.rowCount === 1);
+        
+        if (!isAuthValid) {
+            res.redirect('/');
+            return;
+        }
+        
+        const authUserEmail = sessionRows.rows[0]['user_email'];
+
+        res.send(`<html>
+            <main>
+                <aside id="sidebar">
+                    <a href="/payments">Payments</a>
+                    <a href="/users/${authUserEmail}">Account info</a>
+                </aside>
+                <p>Welcome Home</p>
+                <form method="POST" action="/logout">
+                    <button type="submit">Logout</button>
+                </form>
+            </main>
+        </html>`)
+
+    } catch(error) {
+        res.redirect('/');
+    } finally {
+        client.end()
+    } 
 })
 
 app.post('/sessions', async (req, res) => {
@@ -137,6 +162,69 @@ app.post('/users', (req, res) => {
         
         client.end()
     })
+  }
+)
+
+app.get('/users/:email', async (req, res) => {
+    console.log('Users: ', req.sessionID);
+    const client = new Client(DB_CONNECTION)
+    const { email } = req.params;
+    console.log('Email: ', email);
+    try {      
+        client.connect()
+        
+        const currentSessionQuery = `select * from user_session where session_id = '${req.sessionID}'`;
+
+        const sessionRows = await client.query(currentSessionQuery);
+        console.log('Sessions rows: ', sessionRows);
+
+        // Check authentication
+        const isAuthValid = !!(sessionRows && sessionRows.rowCount === 1);
+
+        if (!isAuthValid) {
+            res.redirect('/');
+            return;
+        }
+        
+        // Should check authorization: email === authUserEmail (isAuthUser)
+        /*        
+        const authUserEmail = sessionRows.rows[0]['user_email'];
+        const isAuthUser = email === authUserEmail;
+        if (!isAuthUser) {
+            const htmlResponse = `<html>
+                    <main>
+                        <p>Not authorized</p>
+                    </main>
+                </html>`
+
+            res.send(htmlResponse)
+            return;
+        }
+        */
+
+        const selectQuery = `select * from ddss_user where email = '${email}'`;
+        const user = await client.query(selectQuery);
+
+        if (user && user.rowCount === 1) {
+            // show user info
+            const htmlResponse = `<html>
+                    <main>
+                        <h3>Your password is</h3>
+                        <p>${user.rows[0].password}</p>
+                    </main>
+                </html>`
+
+            res.send(htmlResponse)
+        } else {
+            console.log('No user');
+            res.redirect('/');
+        }
+    } catch(error) {
+        console.log('error: ', error);
+        res.redirect('/');
+    } finally {
+        client.end()
+    } 
   }
 )
 

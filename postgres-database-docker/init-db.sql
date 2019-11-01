@@ -26,7 +26,7 @@ INSERT INTO ddss_user
 VALUES ('jcfa@dei.uc.pt', '123456', 'João');
 
 INSERT INTO ddss_user
-VALUES ('jcfa+2@dei.uc.pt', '123456', 'João 002');
+VALUES ('jcfa+2@dei.uc.pt', '123456789', 'João 002');
 
 INSERT INTO payment (user_email, card_number, validity, security_code)
 VALUES ('jcfa@dei.uc.pt', '4444 3333 2222 1111', '05/22', '123');

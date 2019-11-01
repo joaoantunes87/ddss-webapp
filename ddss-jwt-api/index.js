@@ -62,9 +62,14 @@ app.post('/login', async (req, res) => {
             text: 'select * from ddss_user where email=$1',
             values: [email],
         };
+
+        // const selectQuery = "select * from ddss_user where email='" + email + "'";
         
         const dbRes = await client.query(selectQuery);
         const isUserValid = !!(dbRes && dbRes.rowCount === 1);
+
+        // const isUserValid = !!(dbRes && dbRes.rowCount > 0);
+
         console.log('Db Rest: ', dbRes);
         if (isUserValid) {
             const { user_id, hashed_password, salt } = dbRes.rows[0];
@@ -101,7 +106,8 @@ app.get('/me', async (req, res) => {
     try {  
         client.connect()
 
-        let token = req.headers['x-access-token'] || req.headers['authorization']; // Express headers are auto converted to lowercase
+        // Express headers are auto converted to lowercase
+        let token = req.headers['x-access-token'] || req.headers['authorization']; 
         if (token.startsWith('Bearer ')) {
             // Remove Bearer from string
             token = token.slice(7, token.length)
