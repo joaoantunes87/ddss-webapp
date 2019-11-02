@@ -1,0 +1,14 @@
+version: "3"
+services:
+  database:
+    container_name: ddss-jwt-database
+    image: ddss-jwt-database
+    ports:
+      - "5432:5432"
+  web:
+    container_name: ddss-jwt-api
+    environment:
+      DB_HOST: ddss-jwt-database
+    image: ddss-jwt-api
+    ports:
+      - "3000:3000"
