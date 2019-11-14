@@ -186,8 +186,7 @@ app.get('/users/:email', async (req, res) => {
             return;
         }
         
-        // Should check authorization: email === authUserEmail (isAuthUser)
-        /*        
+        // Should check authorization: email === authUserEmail (isAuthUser)        
         const authUserEmail = sessionRows.rows[0]['user_email'];
         const isAuthUser = email === authUserEmail;
         if (!isAuthUser) {
@@ -200,7 +199,6 @@ app.get('/users/:email', async (req, res) => {
             res.send(htmlResponse)
             return;
         }
-        */
 
         const selectQuery = `select * from ddss_user where email = '${email}'`;
         const user = await client.query(selectQuery);

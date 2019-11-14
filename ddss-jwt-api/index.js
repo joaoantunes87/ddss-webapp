@@ -2,8 +2,9 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const cors = require('cors')
 
-const port = parseInt(process.env.PORT, 10) || 3000
+const port = parseInt(process.env.PORT, 10) || 3001
 
 const { Client } = require('pg')
 
@@ -12,7 +13,7 @@ const DB_CONNECTION = {
     database: 'jwt',
     password: 'jwt',
     host: process.env.DB_HOST || 'localhost',
-    port: 5432
+    port: 5433
 }
 
 // NOT A GOOD PLACE FOR IT
@@ -23,6 +24,22 @@ const app = express()
 
 // parse application/json
 app.use(bodyParser.json())
+
+/*
+const corsOptions = {
+    origin: 'http://localhost:3000'
+}
+*/
+
+// app.use(cors(corsOptions))
+// app.use(cors())
+
+app.get('/info', (req, res) => {
+    res.status(200).send(JSON.stringify({
+        subject: 'ddss',
+        year: 2019
+    })); 
+})
 
 app.post('/sign-up', async (req, res) => {
     const { name, email, password} = req.body
