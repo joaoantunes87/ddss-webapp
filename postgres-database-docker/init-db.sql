@@ -21,6 +21,14 @@ CREATE TABLE payment(
    security_code VARCHAR (3)
 );
 
+DROP TABLE IF EXISTS comment;
+CREATE TABLE comment(
+   comment_id SERIAL PRIMARY KEY,
+   user_email VARCHAR (50),
+   user_name VARCHAR (50),
+   comment VARCHAR (512)
+);
+
 /* seeds */
 INSERT INTO ddss_user
 VALUES ('jcfa@dei.uc.pt', '123456', 'João');

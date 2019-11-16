@@ -1,5 +1,6 @@
 const express = require('express')
 const port = parseInt(process.env.PORT, 10) || 3000
+const htmlencode = require('htmlencode');
 
 const { Client } = require('pg')
 
@@ -24,6 +25,40 @@ app.use(session({
 
 app.use(express.urlencoded());
 
+const fetchAndRenderCommentsList = async () => {
+    const client = new Client(DB_CONNECTION)
+
+    try {      
+        client.connect()
+        
+        const selectQuery = `select * from comment`;
+        const commentRecords = await client.query(selectQuery);
+            
+        // ${htmlencode.htmlEncode(comment)}
+        let commentItemsHtml = '';
+        commentRecords.rows.forEach(({ user_email, user_name, comment }) => {
+            commentItemsHtml += `<li style="border:1px solid; margin-bottom:5px; padding: 5px;">
+                <p><strong>Email:</strong> ${user_email}</p>
+                <p><strong>Name:</strong> ${user_name}</p>
+                <div>
+                    <p><strong>Comment:</strong></p>
+                    <p>${comment}</p>
+                </div>
+            </li>`;
+        });
+        
+        return `<ul style="list-style-type:none; padding: 0;">${commentItemsHtml}</ul>`;
+
+    } catch(error) {
+        console.log('Error: ', error);
+        return `<p>Error</p>`
+    } finally {
+        client.end()
+    } 
+
+    return `<p>No comments to show</p>`
+}
+
 app.get('/', (req, res) => {
     console.log('Session ID: ', req.sessionID);
 
@@ -38,6 +73,71 @@ app.get('/', (req, res) => {
         </main>
     </html>`);
 })
+
+app.get('/comments', async (req, res) => {
+    return res.send(`<html>
+        <main>
+            <header>
+                <aside id="sidebar">
+                    <a href="/payments">Payments</a>
+                    <a href="/me">Account info</a>
+                </aside>
+            </header>
+            <article>
+                <form method="POST" action="/comments">
+                    <h1>Make your review</h1>
+                    <fieldset>
+                        <p>
+                            <label>
+                                Email
+                                <input name="email" type="email" placeholer="Write your email"/>
+                            </label>
+                        <p>                        
+                        <p>
+                            <label>
+                                Name
+                                <input name="name" type="text" placeholer="Write your name"/>
+                            </label>
+                        </p>
+                        <p>
+                            <label>
+                                <p>Your Comment</p>
+                                <textarea name="comment" rows="4" cols="50" placeholder="Leave your review"></textarea>
+                            </label>
+                        </p>
+                        <button type="submit">Send</button>
+                    </fieldset>                    
+                </form>
+                <sections>
+                    <h2>Comments</h2>
+                    ${await fetchAndRenderCommentsList()}
+                </sections>
+            </article>
+        </main>
+    </html>`);
+})
+
+app.post('/comments', (req, res) => {
+    const client = new Client(DB_CONNECTION)
+    const { name, email, comment } = req.body;
+    
+    client.connect()
+    
+    const insertQuery = `insert into comment (user_email, user_name, comment) values('${email}', '${name}', '${comment}')`;
+    console.log('Insert User: ', insertQuery);
+    client.query(insertQuery, (dbErr, dbRes) => {
+        if (dbErr) {
+            // TODO
+            console.log('Error: ', dbErr)
+            res.redirect('/');
+        } else {
+            res.redirect('/comments');
+        }
+        
+        client.end()
+    })
+  }
+)
 
 app.get('/signup', (req, res) => {
     console.log('Session ID: ', req.sessionID);
