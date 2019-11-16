@@ -5,7 +5,6 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors')
 
 const port = parseInt(process.env.PORT, 10) || 3001
-
 const { Client } = require('pg')
 
 const DB_CONNECTION = {
@@ -25,11 +24,9 @@ const app = express()
 // parse application/json
 app.use(bodyParser.json())
 
-/*
 const corsOptions = {
     origin: 'http://localhost:3000'
 }
-*/
 
 // app.use(cors(corsOptions))
 // app.use(cors())
@@ -43,11 +40,13 @@ app.get('/hack', (req, res) => {
     })); 
 })
 
-app.get('/info', (req, res) => {
-    res.status(200).send(JSON.stringify({
+app.get('/cors', (req, res) => {
+    // res.set('Access-Control-Allow-Origin', '*')
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3002')
+   res.json({
         subject: 'ddss',
         year: 2019
-    })); 
+   });
 })
 
 app.post('/sign-up', async (req, res) => {
