@@ -120,10 +120,10 @@ app.get('/comments', async (req, res) => {
                         <button type="submit">Send</button>
                     </fieldset>                    
                 </form>
-                <sections>
+                <section>
                     <h2>Comments</h2>
                     ${await fetchAndRenderCommentsList()}
-                </sections>
+                </section>
             </article>
         </main>
     </html>`);
@@ -148,6 +148,80 @@ app.post('/comments', (req, res) => {
         
         client.end()
     })
+  }
+)
+
+app.get('/transaction/new', async (req, res) => {
+    return res.send(`<html>
+        <main>
+            <header>
+                <aside id="sidebar">
+                    <a href="/payments">Payments</a>
+                    <a href="/me">Account info</a>
+                </aside>
+            </header>
+            <article>
+                <form method="POST" action="/transactions">
+                    <h1>Send funds</h1>
+                    <fieldset>
+                        <p>
+                            <label>
+                                Email destination
+                                <input name="email" type="email" placeholer="Email to receive money"/>
+                            </label>
+                        <p>                        
+                        <p>
+                            <label>
+                                Amount
+                                <input name="amount" type="number" placeholer="Write the amount"/>
+                            </label>
+                        </p>
+                        <button type="submit">Send</button>
+                    </fieldset>                    
+                </form>
+            </article>
+        </main>
+    </html>`);
+})
+
+app.post('/transactions', async (req, res) => {
+    const client = new Client(DB_CONNECTION)
+    const { email, amount } = req.body;
+    
+    try {
+        client.connect()
+
+        const currentSessionQuery = `select * from user_session where session_id = '${req.sessionID}'`;
+
+        const sessionRows = await client.query(currentSessionQuery);
+
+        // Check authentication
+        const isAuthValid = !!(sessionRows && sessionRows.rowCount === 1);
+        
+        if (!isAuthValid) {
+            res.redirect('/');
+            return;
+        }
+        
+        const authUserEmail = sessionRows.rows[0]['user_email'];
+        
+        const insertQuery = `insert into transactions (from_email, to_email, amount) values('${authUserEmail}', '${email}', '${amount}')`;
+        console.log('Insert Transaction: ', insertQuery);
+        await client.query(insertQuery, (dbErr, dbRes) => {
+            if (dbErr) {
+                console.log('Error: ', dbErr)
+                res.redirect('/');
+            } else {
+                res.redirect('/transaction/new');
+            }
+
+            client.end()
+        })
+
+    } catch(error) {
+        client.end()
+        res.redirect('/');        
+    }
   }
 )
 
@@ -193,6 +267,7 @@ app.get('/me', async (req, res) => {
                 <aside id="sidebar">
                     <a href="/payments">Payments</a>
                     <a href="/users/${authUserEmail}">Account info</a>
+                    <a href="/transaction/new">Send money</a>                    
                 </aside>
                 <p>Welcome Home</p>
                 <form method="POST" action="/logout">

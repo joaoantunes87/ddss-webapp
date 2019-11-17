@@ -29,6 +29,14 @@ CREATE TABLE comment(
    comment VARCHAR (512)
 );
 
+DROP TABLE IF EXISTS transactions;
+CREATE TABLE transactions(
+   transaction_id SERIAL PRIMARY KEY,
+   from_email VARCHAR (50),
+   to_email VARCHAR (50),
+   amount VARCHAR (50)
+);
+
 /* seeds */
 INSERT INTO ddss_user
 VALUES ('jcfa@dei.uc.pt', '123456', 'João');

