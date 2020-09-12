@@ -1,6 +1,6 @@
 # ddss-webapp
 
-DDSS: Unsecure Web App
+Repository example of unsecure web applications and solutions for laboratory lectures of Design and Development of Secure Software subject lectured at Masters in Informatics Security by University of Coimbra.
 
 # Docker
 
