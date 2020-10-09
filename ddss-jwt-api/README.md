@@ -113,7 +113,7 @@ You should receive something like:
 
 ```json
 {
-  {"name":"Joao Antunes"}
+  "name":"Joao Antunes"
 }
 ```
 
