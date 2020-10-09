@@ -1,5 +1,7 @@
 # JWT REST API DEMO
 
+This a demo of using JSON Web Tokens in a REST API to exchange the logged in user between server and client in requests further login.
+
 ## Requirements:
 
 - Docker
@@ -13,10 +15,18 @@ To execute locally without docker
 ## Execute with Docker
 
 ```sh
+docker-compose up
+```
+
+or 
+
+```sh
 ./run.sh
 ```
 
-The server with our REST API was start at http://localhost:3000
+This last command will only work on unix systems. If you, are using a Windows machine you can copy the commands on **run.sh** file, by hand. It should work, if you can user docker and docker-compose commands on terminal.
+
+The server with our REST API was started at http://localhost:3000
 
 ## Run locally without docker
 
