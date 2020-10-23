@@ -27,7 +27,3 @@ Go to http://localhost:3000
 ```sh
 docker-compose down
 ```
-
-### Persistent Database
-
-// TODO Configure Volume
