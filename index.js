@@ -301,8 +301,14 @@ app.post('/sessions', async (req, res) => {
 
         // console.log('Destroy session query: ', destroySessionQuery);
 
-        const selectQuery = `select * from ddss_user where email='${email}' AND password = '${password}'`;        
-        console.log('Login query: ', selectQuery);
+        // const selectQuery = `select * from ddss_user where email='${email}' AND password = '${password}'`;        
+        // console.log('Login query: ', selectQuery);
+
+        const selectQuery = {
+            text: 'select * from ddss_user where email=$1 AND password = $2',
+            values: [email, password],
+        };
+
         const dbRes = await client.query(selectQuery);
         const isAuthValid = !!(dbRes && dbRes.rowCount > 0);
 
